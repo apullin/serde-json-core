@@ -4,32 +4,26 @@ use heapless::ArrayLength;
 
 use crate::ser::{Error, Result, Serializer};
 
-pub struct SerializeMap<'a, B>
-where
-    B: ArrayLength<u8>,
+pub struct SerializeMap<'a>
 {
-    ser: &'a mut Serializer<B>,
+    ser: &'a mut Serializer,
     first: bool,
 }
 
-impl<'a, B> SerializeMap<'a, B>
-where
-    B: ArrayLength<u8>,
+impl<'a> SerializeMap<'a>
 {
-    pub(crate) fn new(ser: &'a mut Serializer<B>) -> Self {
+    pub(crate) fn new(ser: &'a mut Serializer) -> Self {
         SerializeMap { ser, first: true }
     }
 }
 
-impl<'a, B> ser::SerializeMap for SerializeMap<'a, B>
-where
-    B: ArrayLength<u8>,
+impl<'a> ser::SerializeMap for SerializeMap<'a>
 {
     type Ok = ();
     type Error = Error;
 
     fn end(self) -> Result<Self::Ok> {
-        self.ser.buf.push(b'}')?;
+        self.ser.buf.push(b'}');
         Ok(())
     }
 
@@ -38,11 +32,11 @@ where
         T: ser::Serialize,
     {
         if !self.first {
-            self.ser.buf.push(b',')?;
+            self.ser.buf.push(b',');
         }
         self.first = false;
-        key.serialize(&mut *self.ser)?;
-        self.ser.buf.extend_from_slice(b":")?;
+        key.serialize(&mut *self.ser);
+        self.ser.buf.extend_from_slice(b":");
         Ok(())
     }
 
@@ -50,7 +44,7 @@ where
     where
         T: ser::Serialize,
     {
-        value.serialize(&mut *self.ser)?;
+        value.serialize(&mut *self.ser);
         Ok(())
     }
 }

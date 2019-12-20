@@ -4,7 +4,9 @@ use core::{fmt, fmt::Write};
 
 use serde::ser;
 
-use heapless::{consts::*, String, Vec};
+extern crate alloc;
+use alloc::vec::Vec;
+use alloc::string::String;
 
 use self::map::SerializeMap;
 use self::seq::SerializeSeq;
@@ -51,16 +53,12 @@ impl fmt::Display for Error {
     }
 }
 
-pub(crate) struct Serializer<B>
-where
-    B: heapless::ArrayLength<u8>,
+pub(crate) struct Serializer
 {
-    buf: Vec<u8, B>,
+    buf: Vec<u8>,
 }
 
-impl<B> Serializer<B>
-where
-    B: heapless::ArrayLength<u8>,
+impl Serializer
 {
     fn new() -> Self {
         Serializer { buf: Vec::new() }
@@ -86,7 +84,7 @@ macro_rules! serialize_unsigned {
             }
         }
 
-        $self.buf.extend_from_slice(&buf[i..])?;
+        $self.buf.extend_from_slice(&buf[i..]);
         Ok(())
     }};
 }
@@ -120,39 +118,37 @@ macro_rules! serialize_signed {
         } else {
             i += 1;
         }
-        $self.buf.extend_from_slice(&buf[i..])?;
+        $self.buf.extend_from_slice(&buf[i..]);
         Ok(())
     }};
 }
 
 macro_rules! serialize_fmt {
     ($self:ident, $uxx:ident, $fmt:expr, $v:expr) => {{
-        let mut s: String<$uxx> = String::new();
+        let mut s: String = String::new();
         write!(&mut s, $fmt, $v).unwrap();
-        $self.buf.extend_from_slice(s.as_bytes())?;
+        $self.buf.extend_from_slice(s.as_bytes());
         Ok(())
     }};
 }
 
-impl<'a, B> ser::Serializer for &'a mut Serializer<B>
-where
-    B: heapless::ArrayLength<u8>,
+impl<'a> ser::Serializer for &'a mut Serializer
 {
     type Ok = ();
     type Error = Error;
-    type SerializeSeq = SerializeSeq<'a, B>;
-    type SerializeTuple = SerializeSeq<'a, B>;
+    type SerializeSeq = SerializeSeq<'a>;
+    type SerializeTuple = SerializeSeq<'a>;
     type SerializeTupleStruct = Unreachable;
     type SerializeTupleVariant = Unreachable;
-    type SerializeMap = SerializeMap<'a, B>;
-    type SerializeStruct = SerializeStruct<'a, B>;
+    type SerializeMap = SerializeMap<'a>;
+    type SerializeStruct = SerializeStruct<'a>;
     type SerializeStructVariant = Unreachable;
 
     fn serialize_bool(self, v: bool) -> Result<Self::Ok> {
         if v {
-            self.buf.extend_from_slice(b"true")?;
+            self.buf.extend_from_slice(b"true");
         } else {
-            self.buf.extend_from_slice(b"false")?;
+            self.buf.extend_from_slice(b"false");
         }
 
         Ok(())
@@ -211,9 +207,9 @@ where
     }
 
     fn serialize_str(self, v: &str) -> Result<Self::Ok> {
-        self.buf.push(b'"')?;
-        self.buf.extend_from_slice(v.as_bytes())?;
-        self.buf.push(b'"')?;
+        self.buf.push(b'"');
+        self.buf.extend_from_slice(v.as_bytes());
+        self.buf.push(b'"');
         Ok(())
     }
 
@@ -222,7 +218,7 @@ where
     }
 
     fn serialize_none(self) -> Result<Self::Ok> {
-        self.buf.extend_from_slice(b"null")?;
+        self.buf.extend_from_slice(b"null");
         Ok(())
     }
 
@@ -275,7 +271,7 @@ where
     }
 
     fn serialize_seq(self, _len: Option<usize>) -> Result<Self::SerializeSeq> {
-        self.buf.push(b'[')?;
+        self.buf.push(b'[');
 
         Ok(SerializeSeq::new(self))
     }
@@ -303,13 +299,13 @@ where
     }
 
     fn serialize_map(self, _len: Option<usize>) -> Result<Self::SerializeMap> {
-        self.buf.push(b'{')?;
+        self.buf.push(b'{');
 
         Ok(SerializeMap::new(self))
     }
 
     fn serialize_struct(self, _name: &'static str, _len: usize) -> Result<Self::SerializeStruct> {
-        self.buf.push(b'{')?;
+        self.buf.push(b'{');
 
         Ok(SerializeStruct::new(self))
     }
@@ -333,9 +329,8 @@ where
 }
 
 /// Serializes the given data structure as a string of JSON text
-pub fn to_string<B, T>(value: &T) -> Result<String<B>>
+pub fn to_string<T>(value: &T) -> Result<String>
 where
-    B: heapless::ArrayLength<u8>,
     T: ser::Serialize + ?Sized,
 {
     let mut ser = Serializer::new();
@@ -344,9 +339,8 @@ where
 }
 
 /// Serializes the given data structure as a JSON byte vector
-pub fn to_vec<B, T>(value: &T) -> Result<Vec<u8, B>>
+pub fn to_vec<T>(value: &T) -> Result<Vec<u8>>
 where
-    B: heapless::ArrayLength<u8>,
     T: ser::Serialize + ?Sized,
 {
     let mut ser = Serializer::new();
